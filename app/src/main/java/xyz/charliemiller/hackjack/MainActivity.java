@@ -1,21 +1,6 @@
-/*
- * Copyright (C) The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package xyz.charliemiller.hackjack;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.app.Activity;
@@ -23,83 +8,87 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
-
+import android.widget.Toast;
 import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.api.CommonStatusCodes;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Main activity demonstrating how to pass extra parameters to an activity that
- * recognizes text.
+ *  This activity is used to send submitted receipt codes to our remote site.
+ *  If we receive a
+ *
  */
-public class MainActivity extends Activity implements View.OnClickListener {
-
-    // Use a compound button so either checkbox or switch widgets work.
-    private TextView statusMessage;
+public class MainActivity extends Activity implements View.OnClickListener,
+        Response.Listener<String>, Response.ErrorListener{
 
     private static final int RC_OCR_CAPTURE = 9003;
+
+    // Remote site. TODO Should probably move to some sort of resource file.
     private static final String url = "https://sheltered-thicket-46039.herokuapp.com/";
+
+    // POST request param.
     private static final String receipt_post_name = "receipt";
+
+    // Tag for logging.
     private static final String TAG = "MainActivity";
 
+    // Request we'll post to the remote site.
     private StringRequest stringRequest;
+
     private RequestQueue requestQueue;
 
+    // UI receipt input.
     private EditText receiptText;
 
+    private ProgressDialog progressDialog;
+
+
+    /**
+     *
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        statusMessage = (TextView)findViewById(R.id.status_message);
+        // Retrieve UI elements.
         receiptText = (EditText) findViewById(R.id.input_receipt);
 
-        findViewById(R.id.read_text).setOnClickListener(this);
+        // Set click listeners for ui elements.
+        findViewById(R.id.redeem_receipt).setOnClickListener(this);
+        findViewById(R.id.start_ocr).setOnClickListener(this);
 
+        // We'll need to send data to our remote site.
         requestQueue = Volley.newRequestQueue(this);
     }
 
     /**
-     * Called when a view has been clicked.
+     *
      *
      * @param v The view that was clicked.
      */
     @Override
-    public void onClick(View v) {
-
-        if (v.getId() == R.id.read_text)
+    public void onClick(View v)
+    {
+        switch (v.getId())
         {
-            if(receiptText.getText().toString().matches("^[0-9]{14}$"))
-            {
-
-                stringRequest = new StringRequest(Request.Method.POST, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response)
-                            {
-                                Log.d(TAG, "Response: " + response);
-                            }
-                        }, new Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                                Log.d(TAG, "ERROR");
-                            }
-                        })
+            case R.id.redeem_receipt:
+                // The only valid values are 14 digit long numbers.
+                if(receiptText.getText().toString().matches("^[0-9]{14}$"))
+                {
+                    // We implement both onResponse and onErrorResponse.
+                    stringRequest = new StringRequest(Request.Method.POST, url, this, this)
                     {
+                        // Set POST data.
                         @Override
                         protected Map<String, String> getParams() throws AuthFailureError {
                             Map<String, String> params = new HashMap<>();
@@ -120,18 +109,36 @@ public class MainActivity extends Activity implements View.OnClickListener {
                         }
                     };
 
-                Log.d(TAG, receiptText.getText().toString());
-                stringRequest.setRetryPolicy(new DefaultRetryPolicy(12000,
-                        DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
-                        DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+                    // Set timeout to 12 seconds.
+                    stringRequest.setRetryPolicy(new DefaultRetryPolicy(12000,
+                            DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                            DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
 
-                requestQueue.add(stringRequest);
-            }
-            else
-            {
-                receiptText.setError("Receipt must be a 14 digit code.");
-            }
+                    // Make POST request.
+                    requestQueue.add(stringRequest);
+
+                    // Start dialog, to inform the user that the process is being carried out.
+                    progressDialog = new ProgressDialog(this, R.style.AppTheme_Dark_Dialog);
+                    progressDialog.setIndeterminate(true);
+                    progressDialog.setMessage(getString(R.string.redeem_receipt_dialog));
+                    progressDialog.show();
+                }
+                else
+                {
+                    receiptText.setError("Receipt must be a 14 digit code.");
+                }
+            break;
+
+            // The camera icon was selected.
+            case R.id.start_ocr:
+                // Start OCR Activity.
+                Intent intent = new Intent(this, OcrCaptureActivity.class);
+                intent.putExtra(OcrCaptureActivity.AutoFocus, true);
+                intent.putExtra(OcrCaptureActivity.UseFlash, false);
+                startActivityForResult(intent, RC_OCR_CAPTURE);
+            break;
         }
+
     }
 
     /**
@@ -162,15 +169,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             if (resultCode == CommonStatusCodes.SUCCESS) {
                 if (data != null) {
                     String text = data.getStringExtra(OcrCaptureActivity.TextBlockObject);
-                    statusMessage.setText(R.string.ocr_success);
-                    Log.d(TAG, "Text read: " + text);
-                } else {
-                    statusMessage.setText(R.string.ocr_failure);
-                    Log.d(TAG, "No Text captured, intent data is null");
+                    receiptText.setText(text.replaceAll("[^\\d]", ""));
                 }
-            } else {
-                statusMessage.setText(String.format(getString(R.string.ocr_error),
-                        CommonStatusCodes.getStatusCodeString(resultCode)));
             }
         }
         else {
@@ -178,11 +178,39 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
     }
 
+    /**
+     * Cancel requestQueue like the docs recommend.
+     */
     @Override
     protected void onStop () {
         super.onStop();
         if (requestQueue != null) {
             requestQueue.cancelAll(TAG);
         }
+    }
+
+    /**
+     *
+     * @param response
+     */
+    @Override
+    public void onResponse(String response)
+    {
+        progressDialog.dismiss();
+        Intent receiptIntent = new Intent(this, ReceiptActivity.class);
+        receiptIntent.putExtra(ReceiptActivity.VALID_CODE_EXTRA, response);
+        startActivity(receiptIntent);
+    }
+
+    /**
+     *  TODO: Once I add more
+     * @param error
+     */
+    @Override
+    public void onErrorResponse(VolleyError error)
+    {
+        progressDialog.dismiss();
+        Toast.makeText(this, "Something went wrong. Check receipt code and try again.",
+                Toast.LENGTH_SHORT).show();
     }
 }

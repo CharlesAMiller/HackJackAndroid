@@ -23,6 +23,8 @@ import com.google.android.gms.vision.text.Text;
 import com.google.android.gms.vision.text.TextBlock;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import xyz.charliemiller.hackjack.ui.camera.GraphicOverlay;
 
@@ -35,6 +37,7 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
     private int mId;
 
     private static final int TEXT_COLOR = Color.WHITE;
+    private static final int TEXT_POSSIBLE_RECIEPT_COLOR = Color.YELLOW;
 
     private static Paint sRectPaint;
     private static Paint sTextPaint;
@@ -47,7 +50,18 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
 
         if (sRectPaint == null) {
             sRectPaint = new Paint();
-            sRectPaint.setColor(TEXT_COLOR);
+            Pattern pattern = Pattern.compile("\\d{14}");
+            Matcher matcher = pattern.matcher(mText.getValue().replaceAll(" ", ""));
+            // If we have a number value that's the correct length,
+            // we'll differentiate it visually.
+            if(matcher.find())
+            {
+                sRectPaint.setColor(TEXT_POSSIBLE_RECIEPT_COLOR);
+            }
+            else
+            {
+                sRectPaint.setColor(TEXT_COLOR);
+            }
             sRectPaint.setStyle(Paint.Style.STROKE);
             sRectPaint.setStrokeWidth(4.0f);
         }
@@ -116,7 +130,9 @@ public class OcrGraphic extends GraphicOverlay.Graphic {
         for(Text currentText : textComponents) {
             float left = translateX(currentText.getBoundingBox().left);
             float bottom = translateY(currentText.getBoundingBox().bottom);
-            canvas.drawText(currentText.getValue(), left, bottom, sTextPaint);
+            // We're only interested in the number values, so only those should be displayed.
+            canvas.drawText(currentText.getValue().replaceAll("[^\\d]", ""),
+                    left, bottom, sTextPaint);
         }
     }
 }

@@ -12,8 +12,7 @@
         android:allowBackup="true"
         android:fullBackupContent="false"
         android:hardwareAccelerated="true"
-        android:icon="@drawable/icon"
-        android:label="MultiTrackerApp"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl = "true">
         <meta-data
             android:name="com.google.android.gms.vision.DEPENDENCIES"
@@ -31,8 +30,13 @@
         </activity>
 
         <activity android:name="xyz.charliemiller.hackjack.OcrCaptureActivity"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:label="Read Receipt" />
+            android:theme="@style/AppTheme.Dark"
+            android:label="@string/ocr_activity_label" />
+
+        <activity android:name="xyz.charliemiller.hackjack.ReceiptActivity"
+            android:theme="@style/AppTheme.Dark"
+            android:label="@string/receipt_activity_label" />
+
     </application>
 
 </manifest>

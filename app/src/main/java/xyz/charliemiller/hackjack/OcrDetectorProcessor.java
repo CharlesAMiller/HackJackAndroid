@@ -50,19 +50,19 @@ public class OcrDetectorProcessor implements Detector.Processor<TextBlock> {
     public void receiveDetections(Detector.Detections<TextBlock> detections) {
         mGraphicOverlay.clear();
         SparseArray<TextBlock> items = detections.getDetectedItems();
-        for (int i = 0; i < items.size(); ++i) {
+        for (int i = 0; i < items.size(); ++i)
+        {
             TextBlock item = items.valueAt(i);
+            // Check for null.
             if (item != null && item.getValue() != null)
             {
-                Pattern pattern = Pattern.compile("\\d{14}");
-                Matcher matcher = pattern.matcher(item.getValue().replaceAll(" ", ""));
-                if(matcher.find())
+                // Only draw overlays for values that contain numbers.
+                if(item.getValue().replaceAll("[^\\d]", "").length() > 0)
                 {
-                    Log.d(TAG, "Possible valid receipt: " + item.getValue());
+                    OcrGraphic graphic = new OcrGraphic(mGraphicOverlay, item);
+                    mGraphicOverlay.add(graphic);
                 }
             }
-            OcrGraphic graphic = new OcrGraphic(mGraphicOverlay, item);
-            mGraphicOverlay.add(graphic);
         }
     }
 

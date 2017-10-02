@@ -13,4 +13,10 @@
     <string name="ocr_failure">No text captured</string>
     <string name="ocr_error">"Error reading text: %1$s"</string>
     <string name="receipt_code">Receipt Code</string>
+    <string name="redeem">Redeem</string>
+    <string name="receipt_activity_label">Enjoy your meal!</string>
+    <string name="ocr_activity_label">Read Receipt</string>
+    <string name="redeem_receipt_dialog">Redeeming receipt...</string>
+    <string name="validation_code">Validation Code</string>
+    <string name="disclaimer">*This validation code must be redeemed with its receipt in order to be valid.</string>
 </resources>
